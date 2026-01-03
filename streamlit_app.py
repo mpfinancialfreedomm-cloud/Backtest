@@ -142,7 +142,50 @@ def main():
                 out_fmt = format_results(out.copy())
                 st.success('Backtest complete')
                 st.dataframe(out_fmt)
-                csv_bytes = out_fmt.to_csv(index=False).encode('utf-8')
+
+                # Aggregate totals
+                total_profit = out['profit'].fillna(0).sum()
+                total_investment = out['investment'].fillna(0).sum()
+                overall_return_pct = None
+                if total_investment and total_investment != 0:
+                    overall_return_pct = (total_profit / total_investment) * 100
+
+                # Show summary metrics
+                c1, c2, c3 = st.columns(3)
+                c1.metric('Total Profit (₹)', f"{total_profit:.2f}")
+                c2.metric('Total Invested (₹)', f"{total_investment:.2f}")
+                c3.metric('Overall Return', f"{overall_return_pct:.2f}%" if overall_return_pct is not None else "")
+
+                # Plot per-trade profit and cumulative profit
+                try:
+                    profit_series = out['profit'].fillna(0).copy()
+                    # use signal_date for x-axis if present
+                    if 'signal_date' in out:
+                        profit_series.index = pd.to_datetime(out['signal_date'])
+                    st.write('Profit per trade')
+                    st.bar_chart(profit_series)
+                    st.write('Cumulative Profit')
+                    st.line_chart(profit_series.cumsum())
+                except Exception:
+                    # plotting is optional; ignore failures
+                    pass
+
+                # Append a summary row to the downloadable CSV
+                summary = {
+                    'symbol': 'TOTAL',
+                    'signal_date': '',
+                    'entry_date': '',
+                    'entry_price': '',
+                    'exit_date': '',
+                    'exit_price': '',
+                    'return_pct': (f"{overall_return_pct:.2f}%") if overall_return_pct is not None else '',
+                    'profit': f"{total_profit:.2f}",
+                    'investment': f"{total_investment:.2f}",
+                    'note': ''
+                }
+                out_for_csv = out_fmt.copy()
+                out_for_csv = pd.concat([out_for_csv, pd.DataFrame([summary])], ignore_index=True)
+                csv_bytes = out_for_csv.to_csv(index=False).encode('utf-8')
                 st.download_button('Download results CSV', data=csv_bytes, file_name='backtest_results.csv', mime='text/csv')
 
 
