@@ -49,9 +49,18 @@ def find_entry_exit(hist, signal_dt, days):
     entry_pos = hist_idx.get_loc(entry_date)
     exit_pos = entry_pos + days
     if exit_pos >= len(hist_idx):
-        return entry_date, hist.loc[entry_date, 'Close'], None, None
+        v = hist.loc[entry_date, 'Close']
+        if isinstance(v, pd.Series):
+            v = v.iloc[0]
+        return entry_date, v, None, None
     exit_date = hist_idx[exit_pos]
-    return entry_date, hist.loc[entry_date, 'Close'], exit_date, hist.loc[exit_date, 'Close']
+    v1 = hist.loc[entry_date, 'Close']
+    v2 = hist.loc[exit_date, 'Close']
+    if isinstance(v1, pd.Series):
+        v1 = v1.iloc[0]
+    if isinstance(v2, pd.Series):
+        v2 = v2.iloc[0]
+    return entry_date, v1, exit_date, v2
 
 
 def run_backtest(signals_path, investment, days, output_path):
